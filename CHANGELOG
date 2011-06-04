@@ -1,0 +1,9 @@
+*v1.2* (August 11, 2010)
+* Deprecated HTTP POST in favor of HTTP GET parameters.
+* Added additional serial debugging.
+
+*v1.1* (March 02, 2010)
+* Added support for up to three garage doors.
+
+*v1.0* (February 23, 2010)
+* Initial release.

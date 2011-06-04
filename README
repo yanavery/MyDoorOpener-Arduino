@@ -1,0 +1,46 @@
+== MyDoorOpener Arduino web server
+
+This is the source code to the HTTP web server component for
+the MyDoorOpener iPhone application.
+
+For more information, see http://mydooropener.com/
+
+
+== Dependencies
+
+This software relies on the following 3rd party libraries:
+
+- AES-256 API, Copyright (c) 2007-2009, Ilya O. Levin
+- Time API, Copyright (c) 2009, Michael Margolis
+- Webduino, Copyright (c) 2009, Ben Combee, Ran Talbott
+
+
+== What's new in this release?
+
+See the CHANGELOG file for information on what's new.
+
+You can follow http://twitter.com/yanavery if you want to be updated as we
+fix bugs and add new features.
+
+
+== Installation/Usage
+
+This version of the MyDoorOpener PDE file has been tested using Arduino IDE
+version 0017. It is known to have issues with later versions of the Arduino IDE. It
+is therefore recommended to use version 0017 unless you are experimenting and know
+what you are doing.
+
+Don't forget to copy all library files to your Arduino IDE's libraries folder
+before trying to compile.
+
+
+== The distribution
+
+Besides the MyDoorOpener PDE file, there's a complete libraries tree included
+which holds the required libraries for the application to compile.
+
+
+== License
+
+The server component for the MyDoorOpener application is licensed under the terms
+of the MIT License, see the included MIT-LICENSE file.
