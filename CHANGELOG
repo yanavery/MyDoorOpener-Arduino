@@ -1,3 +1,7 @@
+*v1.3* (June 04, 2011)
+* Support for Arduino Uno board.
+* Support for latest Arduino IDE (v0022).
+
 *v1.2* (August 11, 2010)
 * Deprecated HTTP POST in favor of HTTP GET parameters.
 * Added additional serial debugging.

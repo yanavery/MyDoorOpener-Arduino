@@ -8,6 +8,7 @@
 // v1.1 [03/02/2010] - Added support for up to three garage doors.
 // v1.2 [08/11/2010] - Deprecated HTTP POST in favor of HTTP GET parameters.
 //                   - Added additional serial debugging.
+// v1.3 [06/04/2011] - Support for Arduino Uno as well as latest Arduino IDE (v0022).
 //
 //----------------------------------------------------------------------------------------------------
 
@@ -15,6 +16,12 @@
 
 // #define MYDOOROPENER_SERIAL_DEBUGGING 1
 // #define WEBDUINO_SERIAL_DEBUGGING 2
+
+// the SPI library include is required in order to compile using the v0022 Arduino IDE. If
+// using v0017 Arduino IDE, remove or comment the SPI library include statement.
+#include <SPI.h>
+
+// standard includes required for MyDoorOpener compilation
 
 #include "Ethernet.h"
 #include "WebServer.h"

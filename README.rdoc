@@ -25,13 +25,22 @@ fix bugs and add new features.
 
 == Installation/Usage
 
-This version of the MyDoorOpener PDE file has been tested using Arduino IDE
-version 0017. It is known to have issues with later versions of the Arduino IDE. It
-is therefore recommended to use version 0017 unless you are experimenting and know
-what you are doing.
+This version of the MyDoorOpener sketch file has been tested with the following
+Arduino IDE / Arduino hardware board combinations:
 
-Don't forget to copy all library files to your Arduino IDE's libraries folder
-before trying to compile.
+- Arduino IDE v0022 + Arduino Uno
+- Arduino IDE v0022 + Arduino Duemilanove
+- Arduino IDE v0017 + Arduino Duemilanove
+
+If you are using Arduino IDE version 0017, comment out the SPI.h library include
+at the very top of the MyDoorOpener.pde file.
+
+Don't forget to copy all included library files to your Arduino IDE's libraries
+folder before trying to compile.
+
+Before uploading the compiled sketch to your Arduino board, make sure you have
+selected the right board type from the Tools -> Board menu option, from within
+the Arduino IDE.
 
 
 == The distribution
