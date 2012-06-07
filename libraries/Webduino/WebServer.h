@@ -1,7 +1,7 @@
 /* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil;  c-file-style: "k&r"; c-basic-offset: 2; -*-
 
    Webduino, a simple Arduino web server
-   Copyright 2009 Ben Combee, Ran Talbott
+   Copyright 2009-2012 Ben Combee, Ran Talbott, Christopher Lee, Martin Lormes
 
    Permission is hereby granted, free of charge, to any person obtaining a copy
    of this software and associated documentation files (the "Software"), to deal
@@ -28,12 +28,15 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <EthernetClient.h>
+#include <EthernetServer.h>
+
 /********************************************************************
  * CONFIGURATION
  ********************************************************************/
 
-#define WEBDUINO_VERSION 1004
-#define WEBDUINO_VERSION_STRING "1.4"
+#define WEBDUINO_VERSION 1007
+#define WEBDUINO_VERSION_STRING "1.7"
 
 #if WEBDUINO_SUPRESS_SERVER_HEADER
 #define WEBDUINO_SERVER_HEADER ""
@@ -57,6 +60,54 @@
 #ifndef WEBDUINO_FAIL_MESSAGE
 #define WEBDUINO_FAIL_MESSAGE "<h1>EPIC FAIL</h1>"
 #endif
+
+#ifndef WEBDUINO_AUTH_REALM
+#define WEBDUINO_AUTH_REALM "Webduino"
+#endif // #ifndef WEBDUINO_AUTH_REALM
+
+#ifndef WEBDUINO_AUTH_MESSAGE
+#define WEBDUINO_AUTH_MESSAGE "<h1>401 Unauthorized</h1>"
+#endif // #ifndef WEBDUINO_AUTH_MESSAGE
+
+#ifndef WEBDUINO_SERVER_ERROR_MESSAGE
+#define WEBDUINO_SERVER_ERROR_MESSAGE "<h1>500 Internal Server Error</h1>"
+#endif // WEBDUINO_SERVER_ERROR_MESSAGE
+
+// add '#define WEBDUINO_FAVICON_DATA ""' to your application
+// before including WebServer.h to send a null file as the favicon.ico file
+// otherwise this defaults to a 16x16 px black diode on blue ground
+// (or include your own icon if you like)
+#ifndef WEBDUINO_FAVICON_DATA
+#define WEBDUINO_FAVICON_DATA { 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x10, \
+                                0x10, 0x02, 0x00, 0x01, 0x00, 0x01, 0x00, \
+                                0xb0, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, \
+                                0x00, 0x28, 0x00, 0x00, 0x00, 0x10, 0x00, \
+                                0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x01, \
+                                0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                                0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, \
+                                0xff, 0xff, 0x00, 0x00, 0xff, 0xff, 0x00, \
+                                0x00, 0xff, 0xff, 0x00, 0x00, 0xcf, 0xbf, \
+                                0x00, 0x00, 0xc7, 0xbf, 0x00, 0x00, 0xc3, \
+                                0xbf, 0x00, 0x00, 0xc1, 0xbf, 0x00, 0x00, \
+                                0xc0, 0xbf, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                                0x00, 0xc0, 0xbf, 0x00, 0x00, 0xc1, 0xbf, \
+                                0x00, 0x00, 0xc3, 0xbf, 0x00, 0x00, 0xc7, \
+                                0xbf, 0x00, 0x00, 0xcf, 0xbf, 0x00, 0x00, \
+                                0xff, 0xff, 0x00, 0x00, 0xff, 0xff, 0x00, \
+                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+                                0x00, 0x00 }
+#endif // #ifndef WEBDUINO_FAVICON_DATA
 
 // add "#define WEBDUINO_SERIAL_DEBUGGING 1" to your application
 // before including WebServer.h to have incoming requests logged to
@@ -96,7 +147,7 @@ class WebServer: public Print
 {
 public:
   // passed to a command to indicate what kind of request was received
-  enum ConnectionType { INVALID, GET, HEAD, POST };
+  enum ConnectionType { INVALID, GET, HEAD, POST, PUT, DELETE, PATCH };
 
   // any commands registered with the web server have to follow
   // this prototype.
@@ -108,7 +159,7 @@ public:
                        char *url_tail, bool tail_complete);
 
   // constructor for webserver object
-  WebServer(const char *urlPrefix = "/", int port = 80);
+  WebServer(const char *urlPrefix = "", int port = 80);
 
   // start listening for connections
   void begin();
@@ -140,6 +191,9 @@ public:
   // with the P macro
   void printP(const prog_uchar *str);
 
+  // inline overload for printP to handle signed char strings
+  void printP(const prog_char *str) { printP((prog_uchar*)str); }
+
   // output raw data stored in program memory
   void writeP(const prog_uchar *data, size_t length);
 
@@ -167,6 +221,10 @@ public:
   // value or 0 if nothing was read.
   bool readInt(int &number);
 
+  // reads a header value, stripped of possible whitespace in front,
+  // from the server stream
+  void readHeader(char *value, int valueLen);
+
   // Read the next keyword parameter from the socket.  Assumes that other
   // code has already skipped over the headers,  and the next thing to
   // be read will be the start of a keyword.
@@ -181,8 +239,22 @@ public:
   URLPARAM_RESULT nextURLparam(char **tail, char *name, int nameLen,
                                char *value, int valueLen);
 
+  // compare string against credentials in current request
+  //
+  // authCredentials must be Base64 encoded outside of Webduino
+  // (I wanted to be easy on the resources)
+  //
+  // returns true if strings match, false otherwise
+  bool checkCredentials(const char authCredentials[45]);
+
   // output headers and a message indicating a server error
   void httpFail();
+  
+  // output headers and a message indicating "401 Unauthorized"
+  void httpUnauthorized();
+
+  // output headers and a message indicating "500 Internal Server Error"
+  void httpServerError();
 
   // output standard headers indicating "200 Success".  You can change the
   // type of the data you're outputting or also add extra headers like
@@ -196,20 +268,21 @@ public:
   void httpSeeOther(const char *otherURL);
 
   // implementation of write used to implement Print interface
-  virtual void write(uint8_t);
-  virtual void write(const char *str);
-  virtual void write(const uint8_t *buffer, size_t size);
-  void write(const char *data, size_t length);
+  virtual size_t write(uint8_t);
+  virtual size_t write(const char *str);
+  virtual size_t write(const uint8_t *buffer, size_t size);
+  size_t write(const char *data, size_t length);
 
 private:
-  Server m_server;
-  Client m_client;
+  EthernetServer m_server;
+  EthernetClient m_client;
   const char *m_urlPrefix;
 
-  char m_pushback[32];
+  unsigned char m_pushback[32];
   char m_pushbackDepth;
 
   int m_contentLength;
+  char m_authCredentials[51];
   bool m_readingContent;
 
   Command *m_failureCmd;
@@ -233,7 +306,13 @@ private:
   static void defaultFailCmd(WebServer &server, ConnectionType type,
                              char *url_tail, bool tail_complete);
   void noRobots(ConnectionType type);
+  void favicon(ConnectionType type);
 };
+
+/* define this macro if you want to include the header in a sketch source
+   file but not define any of the implementation. This is useful if
+   multiple source files are using the Webduino class. */
+#ifndef WEBDUINO_NO_IMPLEMENTATION
 
 /********************************************************************
  * IMPLEMENTATION
@@ -275,24 +354,24 @@ void WebServer::addCommand(const char *verb, Command *cmd)
   }
 }
 
-void WebServer::write(uint8_t ch)
+size_t WebServer::write(uint8_t ch)
 {
-  m_client.write(ch);
+  return m_client.write(ch);
 }
 
-void WebServer::write(const char *str)
+size_t WebServer::write(const char *str)
 {
-  m_client.write(str);
+  return m_client.write(str);
 }
 
-void WebServer::write(const uint8_t *buffer, size_t size)
+size_t WebServer::write(const uint8_t *buffer, size_t size)
 {
-  m_client.write(buffer, size);
+  return m_client.write(buffer, size);
 }
 
-void WebServer::write(const char *buffer, size_t length)
+size_t WebServer::write(const char *buffer, size_t length)
 {
-  m_client.write((const uint8_t *)buffer, length);
+  return m_client.write((const uint8_t *)buffer, length);
 }
 
 void WebServer::writeP(const prog_uchar *data, size_t length)
@@ -346,8 +425,18 @@ void WebServer::printCRLF()
 bool WebServer::dispatchCommand(ConnectionType requestType, char *verb,
         bool tail_complete)
 {
+  // if there is no URL, i.e. we have a prefix and it's requested without a 
+  // trailing slash or if the URL is just the slash
   if ((verb[0] == 0) || ((verb[0] == '/') && (verb[1] == 0)))
   {
+    m_defaultCmd(*this, requestType, "", tail_complete);
+    return true;
+  }
+  // if the URL is just a slash followed by a question mark
+  // we're looking at the default command with GET parameters passed
+  if ((verb[0] == '/') && (verb[1] == '?'))
+  {
+    verb+=2; // skip over the "/?" part of the url
     m_defaultCmd(*this, requestType, verb, tail_complete);
     return true;
   }
@@ -394,6 +483,8 @@ void WebServer::processConnection()
 
 void WebServer::processConnection(char *buff, int *bufflen)
 {
+  int urlPrefixLen = strlen(m_urlPrefix);
+
   m_client = m_server.available();
 
   if (m_client) {
@@ -407,21 +498,33 @@ void WebServer::processConnection(char *buff, int *bufflen)
 #if WEBDUINO_SERIAL_DEBUGGING > 1
     Serial.print("*** requestType = ");
     Serial.print((int)requestType);
-    Serial.println(", request = \"");
+    Serial.print(", request = \"");
     Serial.print(buff);
     Serial.println("\" ***");
 #endif
-    processHeaders();
+
+    // don't even look further at invalid requests.
+    // this is done to prevent Webduino from hanging
+    // - when there are illegal requests,
+    // - when someone contacts it through telnet rather than proper HTTP,
+    // - etc.
+    if (requestType != INVALID)
+    {
+      processHeaders();
 #if WEBDUINO_SERIAL_DEBUGGING > 1
-    Serial.println("*** headers complete ***");
+      Serial.println("*** headers complete ***");
 #endif
 
-    int urlPrefixLen = strlen(m_urlPrefix);
-    if (strcmp(buff, "/robots.txt") == 0)
-    {
-      noRobots(requestType);
+      if (strcmp(buff, "/robots.txt") == 0)
+      {
+        noRobots(requestType);
+      }
+      else if (strcmp(buff, "/favicon.ico") == 0)
+      {
+        favicon(requestType);
+      }
     }
-    else if (requestType == INVALID ||
+    if      (requestType == INVALID ||
              strncmp(buff, m_urlPrefix, urlPrefixLen) != 0 ||
              !dispatchCommand(requestType, buff + urlPrefixLen,
                               (*bufflen) >= 0))
@@ -432,8 +535,16 @@ void WebServer::processConnection(char *buff, int *bufflen)
 #if WEBDUINO_SERIAL_DEBUGGING > 1
     Serial.println("*** stopping connection ***");
 #endif
-    m_client.stop();
+    reset();
   }
+}
+
+bool WebServer::checkCredentials(const char authCredentials[45])
+{
+  char basic[7] = "Basic ";
+  if((0 == strncmp(m_authCredentials,basic,6)) && 
+     (0 == strcmp(authCredentials, m_authCredentials + 6))) return true;
+  return false;
 }
 
 void WebServer::httpFail()
@@ -466,12 +577,48 @@ void WebServer::noRobots(ConnectionType type)
   }
 }
 
+void WebServer::favicon(ConnectionType type)
+{
+  httpSuccess("image/x-icon","Cache-Control: max-age=31536000\r\n");
+  if (type != HEAD)
+  {
+    P(faviconIco) = WEBDUINO_FAVICON_DATA;
+    writeP(faviconIco, sizeof(faviconIco));
+  }
+}
+
+void WebServer::httpUnauthorized()
+{
+  P(failMsg) =
+    "HTTP/1.0 401 Authorization Required" CRLF
+    WEBDUINO_SERVER_HEADER
+    "Content-Type: text/html" CRLF
+    "WWW-Authenticate: Basic realm=\"" WEBDUINO_AUTH_REALM "\"" CRLF
+    CRLF
+    WEBDUINO_AUTH_MESSAGE;
+
+  printP(failMsg);
+}
+
+void WebServer::httpServerError()
+{
+  P(failMsg) =
+    "HTTP/1.0 500 Internal Server Error" CRLF
+    WEBDUINO_SERVER_HEADER
+    "Content-Type: text/html" CRLF
+    CRLF
+    WEBDUINO_SERVER_ERROR_MESSAGE;
+
+  printP(failMsg);
+}
+
 void WebServer::httpSuccess(const char *contentType,
                             const char *extraHeaders)
 {
   P(successMsg1) =
     "HTTP/1.0 200 OK" CRLF
     WEBDUINO_SERVER_HEADER
+    "Access-Control-Allow-Origin: *" CRLF
     "Content-Type: ";
 
   printP(successMsg1);
@@ -546,8 +693,7 @@ int WebServer::read()
 #if WEBDUINO_SERIAL_DEBUGGING
           Serial.println("*** Connection timed out");
 #endif
-          m_client.flush();
-          m_client.stop();
+          reset();
           return -1;
         }
       }
@@ -578,6 +724,8 @@ void WebServer::push(int ch)
 void WebServer::reset()
 {
   m_pushbackDepth = 0;
+  m_client.flush();
+  m_client.stop();
 }
 
 bool WebServer::expect(const char *str)
@@ -632,11 +780,38 @@ bool WebServer::readInt(int &number)
   return gotNumber;
 }
 
+void WebServer::readHeader(char *value, int valueLen)
+{
+  int ch;
+  memset(value, 0, valueLen);
+  --valueLen;
+
+  // absorb whitespace
+  do
+  {
+    ch = read();
+  } while (ch == ' ' || ch == '\t');
+
+  // read rest of line
+  do
+  {
+    if (valueLen > 1)
+    {
+      *value++=ch;
+      --valueLen;
+      ch = read();
+    }
+  } while (ch != '\r');
+  push(ch);
+}
+
 bool WebServer::readPOSTparam(char *name, int nameLen,
                               char *value, int valueLen)
 {
   // assume name is at current place in stream
   int ch;
+  // to not to miss the last parameter
+  bool foundSomething = false;
 
   // clear out name and value so they'll be NUL terminated
   memset(name, 0, nameLen);
@@ -648,6 +823,7 @@ bool WebServer::readPOSTparam(char *name, int nameLen,
 
   while ((ch = read()) != -1)
   {
+    foundSomething = true;
     if (ch == '+')
     {
       ch = ' ';
@@ -674,22 +850,34 @@ bool WebServer::readPOSTparam(char *name, int nameLen,
       ch = strtoul(hex, NULL, 16);
     }
 
-    // check against 1 so we don't overwrite the final NUL
-    if (nameLen > 1)
+    // output the new character into the appropriate buffer or drop it if
+    // there's no room in either one.  This code will malfunction in the
+    // case where the parameter name is too long to fit into the name buffer,
+    // but in that case, it will just overflow into the value buffer so
+    // there's no harm.
+    if (nameLen > 0)
     {
       *name++ = ch;
       --nameLen;
     }
-    else if (valueLen > 1)
+    else if (valueLen > 0)
     {
       *value++ = ch;
       --valueLen;
     }
   }
 
-  // if we get here, we hit the end-of-file, so POST is over and there
-  // are no more parameters
-  return false;
+  if (foundSomething)
+  {
+    // if we get here, we have one last parameter to serve
+    return true;
+  }
+  else
+  {
+    // if we get here, we hit the end-of-file, so POST is over and there
+    // are no more parameters
+    return false;
+  }
 }
 
 /* Retrieve a parameter that was encoded as part of the URL, stored in
@@ -853,16 +1041,24 @@ void WebServer::getRequest(WebServer::ConnectionType &type,
 
   type = INVALID;
 
-  // store the GET/POST line of the request
+  // store the HTTP method line of the request
   if (expect("GET "))
     type = GET;
   else if (expect("HEAD "))
     type = HEAD;
   else if (expect("POST "))
     type = POST;
+  else if (expect("PUT "))
+    type = PUT;
+  else if (expect("DELETE "))
+    type = DELETE;
+  else if (expect("PATCH "))
+    type = PATCH;
 
   // if it doesn't start with any of those, we have an unknown method
-  // so just eat rest of header
+  // so just get out of here
+  else
+    return;
 
   int ch;
   while ((ch = read()) != -1)
@@ -876,8 +1072,8 @@ void WebServer::getRequest(WebServer::ConnectionType &type,
     {
       *request = ch;
       ++request;
-      --*length;
     }
+    --*length;
   }
   // NUL terminate
   *request = 0;
@@ -885,8 +1081,13 @@ void WebServer::getRequest(WebServer::ConnectionType &type,
 
 void WebServer::processHeaders()
 {
-  // look for two things: the Content-Length header and the double-CRLF
-  // that ends the headers.
+  // look for three things: the Content-Length header, the Authorization 
+  // header, and the double-CRLF that ends the headers.
+
+  // empty the m_authCredentials before every run of this function.
+  // otherwise users who don't send an Authorization header would be treated
+  // like the last user who tried to authenticate (possibly successful)
+  m_authCredentials[0]=0;
 
   while (1)
   {
@@ -896,6 +1097,17 @@ void WebServer::processHeaders()
 #if WEBDUINO_SERIAL_DEBUGGING > 1
       Serial.print("\n*** got Content-Length of ");
       Serial.print(m_contentLength);
+      Serial.print(" ***");
+#endif
+      continue;
+    }
+
+    if (expect("Authorization:"))
+    {
+      readHeader(m_authCredentials,51);
+#if WEBDUINO_SERIAL_DEBUGGING > 1
+      Serial.print("\n*** got Authorization: of ");
+      Serial.print(m_authCredentials);
       Serial.print(" ***");
 #endif
       continue;
@@ -952,5 +1164,7 @@ void WebServer::radioButton(const char *name, const char *val,
 {
   outputCheckboxOrRadio("radio", name, val, label, selected);
 }
+
+#endif // WEBDUINO_NO_IMPLEMENTATION
 
 #endif // WEBDUINO_H_

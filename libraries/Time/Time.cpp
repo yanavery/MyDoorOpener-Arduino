@@ -19,8 +19,7 @@
   6 Jan 2010 - initial release 
 */
 
-#include <WProgram.h> 
-
+#include "Arduino.h"
 #include "Time.h"
 
 static tmElements_t tm;          // a cache of time elements

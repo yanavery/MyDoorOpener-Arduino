@@ -28,12 +28,7 @@ fix bugs and add new features.
 This version of the MyDoorOpener sketch file has been tested with the following
 Arduino IDE / Arduino hardware board combinations:
 
-- Arduino IDE v0022 + Arduino Uno
-- Arduino IDE v0022 + Arduino Duemilanove
-- Arduino IDE v0017 + Arduino Duemilanove
-
-If you are using Arduino IDE version 0017, comment out the SPI.h library include
-at the very top of the MyDoorOpener.pde file.
+- Arduino IDE v1.01 + Arduino Uno
 
 Don't forget to copy all included library files to your Arduino IDE's libraries
 folder before trying to compile.
@@ -45,7 +40,7 @@ the Arduino IDE.
 
 == The distribution
 
-Besides the MyDoorOpener PDE file, there's a complete libraries tree included
+Besides the MyDoorOpener INO file, there's a complete libraries tree included
 which holds the required libraries for the application to compile.
 
 

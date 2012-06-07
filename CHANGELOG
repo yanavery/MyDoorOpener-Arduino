@@ -1,3 +1,7 @@
+*v2.0* (June 07, 2012)
+* Support for v2.0 of the iPhone application.
+* Support for latest Arduino IDE (v1.01).
+
 *v1.3* (June 04, 2011)
 * Support for Arduino Uno board.
 * Support for latest Arduino IDE (v0022).
