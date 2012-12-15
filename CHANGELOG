@@ -1,3 +1,14 @@
+*v2.2* (December 15, 2012)
+* Support for v2.2 of the iPhone application.
+* Support for latest Arduino IDE (v1.03).
+* Support for SMTP email notifications.
+* Support for SMS notifications (via carrier provided SMTPtoSMS gateway).
+* Support for iOS push notifications (via Prowl).
+* Support for multiple status reading strategies (3v5v, NC, NO, etc).
+* Relocated most string literals to flash memory.
+* Certified compatibility with ArduinoEthernet (all-in-one) and DFRobot RelayShield hardware.
+* Certified compatibility with Arduino v1.0.3 IDE.
+
 *v2.0* (June 07, 2012)
 * Support for v2.0 of the iPhone application.
 * Support for latest Arduino IDE (v1.01).

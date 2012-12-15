@@ -28,7 +28,8 @@ fix bugs and add new features.
 This version of the MyDoorOpener sketch file has been tested with the following
 Arduino IDE / Arduino hardware board combinations:
 
-- Arduino IDE v1.01 + Arduino Uno
+- Arduino IDE v1.03 + Arduino Ethernet board + DFRobot Relay Shield
+- Arduino IDE v1.03 + Arduino Uno board + Arduino Ethernet Shield + DFRobot Relay Shield
 
 Don't forget to copy all included library files to your Arduino IDE's libraries
 folder before trying to compile.
