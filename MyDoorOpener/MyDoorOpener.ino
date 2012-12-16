@@ -84,8 +84,8 @@ static const uint8_t statusPins[] = { 3 }; // single device at pin #3
 
 #define STATUS_STRATEGY_3VCLOSED_5VOPENED // initial approach - uses analogRead combined with STATUS_OPEN_TRESHOLD (opened == +5v, closed == +3v)
 //#define STATUS_STRATEGY_5VCLOSED_3VOPENED // alternate approach - uses analogRead combined with STATUS_OPEN_TRESHOLD (opened == +3v, closed == +5v)
-//#define STATUS_STRATEGY_NORMALLY_CLOSED // classic door sensor - uses digitalRead to interpret door/device status (opened == high-impedance, closed == +5v)
-//#define STATUS_STRATEGY_NORMALLY_OPENED // alternate approach - uses digitalRead to interpret door/device status (opened == +5v, closed == high-impedance)
+//#define STATUS_STRATEGY_NORMALLY_CLOSED // classic door sensor - uses digitalRead to interpret door/device status (opened == high-impedance, closed == GND)
+//#define STATUS_STRATEGY_NORMALLY_OPENED // alternate approach - uses digitalRead to interpret door/device status (opened == GND, closed == high-impedance)
 
 // Analog boundary value (0-1023) used to distinguish between device/door status == opened and closed. Only applicable
 // when STATUS_STRATEGY_3VCLOSED_5VOPENED or STATUS_STRATEGY_5VCLOSED_3VOPENED is being used.
@@ -383,7 +383,7 @@ void configureStatusPin(int pinNumber)
   #if defined(STATUS_STRATEGY_3VCLOSED_5VOPENED) || defined(STATUS_STRATEGY_5VCLOSED_3VOPENED)
     pinMode(pinNumber, INPUT);
   #elif defined(STATUS_STRATEGY_NORMALLY_CLOSED) || defined(STATUS_STRATEGY_NORMALLY_OPENED)
-    pinMode(pinNumber, INPUT_PULLUP);
+    pinMode(pinNumber+14, INPUT_PULLUP); // addressing analog pins as digital pins (+14)
   #endif
 }
 
