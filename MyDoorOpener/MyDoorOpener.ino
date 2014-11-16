@@ -22,6 +22,8 @@
 //                   - Certified compatibility with ArduinoEthernet (all-in-one) and DFRobot RelayShield hardware
 //                   - Certified compatibility with Arduino v1.0.3 IDE
 //
+// v2.3 [11/16/2014] - Certified compatibility with DFRobot Xboard Relay (which is now the new standard/default)
+//                   - Certified compatibility with Arduino v1.0.6 IDE
 //----------------------------------------------------------------------------------------------------
 
 // Uncomment to turn ON serial debugging
@@ -67,24 +69,29 @@ static const uint8_t ip[4] = { 192, 168, 0, 13 };
 // open/close trigger relay should be connected to these digital output pins (digitalWrite).
 // Adjust to match the number of devices you have hooked up (examples provided below in comment) ...
 
-static const uint8_t relayPins[] = { 9 }; // single device at pin #9
+//static const uint8_t relayPins[] = { 9 }; // single device at pin #9
 //static uint8_t relayPins[] = { 2, 3, 4, 5 }; // select if using DFRobot RelayShield
 //static uint8_t relayPins[] = { 2, 3 }; // two devices at pins #2 and #3
 //static uint8_t relayPins[] = { 2, 3, 4, ... }; // even more devices at pins #2, #3, #4, etc ...
+static uint8_t relayPins[] = { 7, 8 }; // select if using DFRobot XBoard Relay
 
 // status contact should be connected to these analog input pins (anologRead).
 // Adjust to match the number of devices you have hooked up (examples provided below in comment) ...
 
-static const uint8_t statusPins[] = { 3 }; // single device at pin #3
+//static const uint8_t statusPins[] = { 3 }; // single device at pin #3
 //static uint8_t statusPins[] = { 2, 3, 4, 5 }; // select if using DFRobot RelayShield
 //static uint8_t statusPins[] = { 2, 3 }; // two devices at pins #2 and #3
 //static uint8_t statusPins[] = { 2, 3, 4, ... }; // even more devices at pins #2, #3, #4, etc ...
+static uint8_t statusPins[] = { 3, 4 }; // select if using DFRobot XBoard Relay
+
+// Uncomment when using XBoard Relay
+#define USING_XBOARD_RELAY
 
 // status reading strategy (uncomment only one ... the one that reflects how you want status to be interpreted)
 
-#define STATUS_STRATEGY_3VCLOSED_5VOPENED // initial approach - uses analogRead combined with STATUS_OPEN_TRESHOLD (opened == +5v, closed == +3v)
+//#define STATUS_STRATEGY_3VCLOSED_5VOPENED // initial approach - uses analogRead combined with STATUS_OPEN_TRESHOLD (opened == +5v, closed == +3v)
 //#define STATUS_STRATEGY_5VCLOSED_3VOPENED // alternate approach - uses analogRead combined with STATUS_OPEN_TRESHOLD (opened == +3v, closed == +5v)
-//#define STATUS_STRATEGY_NORMALLY_CLOSED // classic door sensor - uses digitalRead to interpret door/device status (opened == high-impedance, closed == GND)
+#define STATUS_STRATEGY_NORMALLY_CLOSED // classic door sensor - uses digitalRead to interpret door/device status (opened == high-impedance, closed == GND)
 //#define STATUS_STRATEGY_NORMALLY_OPENED // alternate approach - uses digitalRead to interpret door/device status (opened == GND, closed == high-impedance)
 
 // Analog boundary value (0-1023) used to distinguish between device/door status == opened and closed. Only applicable
@@ -383,7 +390,11 @@ void configureStatusPin(int pinNumber)
   #if defined(STATUS_STRATEGY_3VCLOSED_5VOPENED) || defined(STATUS_STRATEGY_5VCLOSED_3VOPENED)
     pinMode(pinNumber, INPUT);
   #elif defined(STATUS_STRATEGY_NORMALLY_CLOSED) || defined(STATUS_STRATEGY_NORMALLY_OPENED)
-    pinMode(pinNumber+14, INPUT_PULLUP); // addressing analog pins as digital pins (+14)
+    #if defined(USING_XBOARD_RELAY)
+      pinMode(pinNumber+18, INPUT_PULLUP); // addressing analog pins as digital pins (+18)
+    #elif
+      pinMode(pinNumber+14, INPUT_PULLUP); // addressing analog pins as digital pins (+14)
+    #endif
   #endif
 }
 
@@ -393,7 +404,11 @@ boolean isOpen(int pinNumber)
   #if defined(STATUS_STRATEGY_3VCLOSED_5VOPENED) || defined(STATUS_STRATEGY_5VCLOSED_3VOPENED)
     int status = analogRead(pinNumber);
   #elif defined(STATUS_STRATEGY_NORMALLY_CLOSED) || defined(STATUS_STRATEGY_NORMALLY_OPENED)
-    int status = digitalRead(pinNumber+14); // addressing analog pins as digital pins (+14)
+    #if defined(USING_XBOARD_RELAY)
+      int status = digitalRead(pinNumber+18); // addressing analog pins as digital pins (+18)
+    #elif  
+      int status = digitalRead(pinNumber+14); // addressing analog pins as digital pins (+14)
+    #endif
   #endif
 
   #if defined(MYDOOROPENER_SERIAL_DEBUGGING)
