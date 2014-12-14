@@ -11,7 +11,7 @@ class MyDoorOpenerServer
 	public:
 		MyDoorOpenerServer(char* pPassword, uint8_t pMac[6], uint8_t pIp[4], uint8_t pDns[4] = NULL, uint8_t pGateway[4] = NULL);
 
-		void setup();
+		void setup(uint8_t pStatusPins[], int pStatusPinsCount);
 		void loop();
 
 	protected:
@@ -39,6 +39,9 @@ class MyDoorOpenerServer
 		uint8_t ip[4];
 		uint8_t dns[4];
 		uint8_t gateway[4];
+
+		int statusPinsCount;
+		uint8_t statusPins[16];
 
 		EthernetClient client;
 };

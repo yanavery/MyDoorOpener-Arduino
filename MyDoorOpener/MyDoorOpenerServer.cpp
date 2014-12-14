@@ -7,8 +7,9 @@
 #include "MyDoorOpenerServer.h"
 #include <aes256.h>
 
+//#define MYDOOROPENER_SERIAL_DEBUGGING 1
+
 extern EthernetServer server;
-extern uint8_t *statusPins;
 extern boolean isOpen(int pinNumber);
 extern int RELAY_DELAY;
 
@@ -40,8 +41,14 @@ MyDoorOpenerServer::MyDoorOpenerServer(char* pPassword, uint8_t pMac[6], uint8_t
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void MyDoorOpenerServer::setup()
+void MyDoorOpenerServer::setup(uint8_t pStatusPins[], int pStatusPinsCount)
 {
+	statusPinsCount = pStatusPinsCount;
+	for (int i = 0; i < sizeof(statusPins); ++i)
+		statusPins[i] = NULL;
+	for (int i = 0; i < statusPinsCount; ++i)
+		statusPins[i] = pStatusPins[i];
+
 	#if defined(MYDOOROPENER_SERIAL_DEBUGGING)
 		Serial.begin(9600);
 		while (!Serial)
@@ -357,7 +364,7 @@ void MyDoorOpenerServer::writeResponse()
 
 	// write current door status
 
-	for (int i = 0; i < sizeof(statusPins); ++i)
+	for (int i = 0; i < statusPinsCount; ++i)
 	{
 		output("<status statusPin=\"", false);
 		output(statusPins[i], false);

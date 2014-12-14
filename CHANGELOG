@@ -1,5 +1,5 @@
 *v2.4* (December 14, 2014)
-* Reduced memory footprint by getting rid of "WebDuino" and "Time" libraries
+* Reduced memory footprint by getting rid of "WebDuino" library
 
 *v2.3* (November 16, 2014)
 * Certified compatibility with DFRobot Xboard Relay (which is now the new standard/default)

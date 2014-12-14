@@ -25,13 +25,12 @@
 // v2.3 [11/16/2014] - Certified compatibility with DFRobot Xboard Relay (which is now the new standard/default)
 //                   - Certified compatibility with Arduino v1.0.6 IDE
 //
-// v2.4 [12/14/2014] - Reduced memory footprint by getting rid of "WebDuino" and "Time" libraries
+// v2.4 [12/14/2014] - Reduced memory footprint by getting rid of "WebDuino" library
 //----------------------------------------------------------------------------------------------------
 
 // Uncomment to turn ON serial debugging
 
 //#define MYDOOROPENER_SERIAL_DEBUGGING 1
-//#define WEBDUINO_SERIAL_DEBUGGING 1
 //#define NOTIFICATIONS_SERIAL_DEBUGGING 1
 //#define SMTP_SERIAL_DEBUGGING 1
 //#define PUSH_SERIAL_DEBUGGING 1
@@ -39,6 +38,7 @@
 #include <Ethernet.h>
 #include <SPI.h>
 #include <aes256.h>
+#include <Time.h>
 
 #include "MyDoorOpenerServer.h"
 
@@ -615,7 +615,7 @@ void setup()
 
   // start web server
 
-  myDoorOpenerServer.setup();
+  myDoorOpenerServer.setup(statusPins, sizeof(statusPins));
 
   #if defined(MYDOOROPENER_SERIAL_DEBUGGING)
     Serial.println(F("*** MyDoorOpener setup completed ***"));
