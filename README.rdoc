@@ -11,8 +11,6 @@ For more information, see http://mydooropener.com/
 This software relies on the following 3rd party libraries:
 
 - AES-256 API, Copyright (c) 2007-2009, Ilya O. Levin
-- Time API, Copyright (c) 2009, Michael Margolis
-- Webduino, Copyright (c) 2009, Ben Combee, Ran Talbott
 
 
 == What's new in this release?

@@ -24,6 +24,8 @@
 //
 // v2.3 [11/16/2014] - Certified compatibility with DFRobot Xboard Relay (which is now the new standard/default)
 //                   - Certified compatibility with Arduino v1.0.6 IDE
+//
+// v2.4 [12/14/2014] - Reduced memory footprint by getting rid of "WebDuino" and "Time" libraries
 //----------------------------------------------------------------------------------------------------
 
 // Uncomment to turn ON serial debugging
@@ -34,12 +36,11 @@
 //#define SMTP_SERIAL_DEBUGGING 1
 //#define PUSH_SERIAL_DEBUGGING 1
 
-#include <Arduino.h>
-#include <SPI.h>
-#include <Time.h>
 #include <Ethernet.h>
-#include <WebServer.h>
+#include <SPI.h>
 #include <aes256.h>
+
+#include "MyDoorOpenerServer.h"
 
 //*******************************************************************
 // Global configuration (adjust to reflect your setup)
@@ -50,12 +51,25 @@
 // your Arduino from the iPhone application or internet ... You need to configure NAT forwarding
 // on your home router to do that. See http://en.wikipedia.org/wiki/Port_forwarding for more details.
 
-static const uint8_t ip[4] = { 192, 168, 0, 13 };
+uint8_t ip[4] = { 192, 168, 0, 13 };
+
+// Port on which Arduino HTTP server will listen to
+
+int port = 80;
+
+// MAC address to be used by ethernet adapter
+
+uint8_t mac[6] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 
 // password required for operating door [max length = 16] (status fetching doesn't require password). This
 // must match the password you set in the iPhone application (be careful as case is sensitive).
 
-#define PASSWORD "xxx"
+char* password = "xxx";
+
+// Do not remove the following server definitions
+
+EthernetServer server(port);
+MyDoorOpenerServer myDoorOpenerServer(password, mac, ip);
 
 //*******************************************************************
 // Device/Door configuration (relais and sensors)
@@ -69,20 +83,20 @@ static const uint8_t ip[4] = { 192, 168, 0, 13 };
 // open/close trigger relay should be connected to these digital output pins (digitalWrite).
 // Adjust to match the number of devices you have hooked up (examples provided below in comment) ...
 
-//static const uint8_t relayPins[] = { 9 }; // single device at pin #9
-//static uint8_t relayPins[] = { 2, 3, 4, 5 }; // select if using DFRobot RelayShield
-//static uint8_t relayPins[] = { 2, 3 }; // two devices at pins #2 and #3
-//static uint8_t relayPins[] = { 2, 3, 4, ... }; // even more devices at pins #2, #3, #4, etc ...
-static uint8_t relayPins[] = { 7, 8 }; // select if using DFRobot XBoard Relay
+//uint8_t relayPins[] = { 9 }; // single device at pin #9
+//uint8_t relayPins[] = { 2, 3, 4, 5 }; // select if using DFRobot RelayShield
+//uint8_t relayPins[] = { 2, 3 }; // two devices at pins #2 and #3
+//uint8_t relayPins[] = { 2, 3, 4, ... }; // even more devices at pins #2, #3, #4, etc ...
+uint8_t relayPins[] = { 7, 8 }; // select if using DFRobot XBoard Relay
 
 // status contact should be connected to these analog input pins (anologRead).
 // Adjust to match the number of devices you have hooked up (examples provided below in comment) ...
 
-//static const uint8_t statusPins[] = { 3 }; // single device at pin #3
-//static uint8_t statusPins[] = { 2, 3, 4, 5 }; // select if using DFRobot RelayShield
-//static uint8_t statusPins[] = { 2, 3 }; // two devices at pins #2 and #3
-//static uint8_t statusPins[] = { 2, 3, 4, ... }; // even more devices at pins #2, #3, #4, etc ...
-static uint8_t statusPins[] = { 3, 4 }; // select if using DFRobot XBoard Relay
+//uint8_t statusPins[] = { 3 }; // single device at pin #3
+//uint8_t statusPins[] = { 2, 3, 4, 5 }; // select if using DFRobot RelayShield
+//uint8_t statusPins[] = { 2, 3 }; // two devices at pins #2 and #3
+//uint8_t statusPins[] = { 2, 3, 4, ... }; // even more devices at pins #2, #3, #4, etc ...
+uint8_t statusPins[] = { 3, 4 }; // select if using DFRobot XBoard Relay
 
 // Comment if not using XBoard Relay
 #define USING_XBOARD_RELAY
@@ -120,16 +134,16 @@ static uint8_t statusPins[] = { 3, 4 }; // select if using DFRobot XBoard Relay
 
 // after installing Prowl (iTunes store) on your iPhone, set to match the Prowl API key that was
 // assigned for your iPhone http://www.prowlapp.com/api_settings.php
-static const char prowlApiKey[] = "paste-your-prowl-provided-api-key-here";
+char prowlApiKey[] = "paste-your-prowl-provided-api-key-here";
 
 // set to Prowl HTTP server name (typically api.prowlapp.com)
-static const char prowlServerName[] = "api.prowlapp.com";
+char prowlServerName[] = "api.prowlapp.com";
 
 // set to Prowl HTTP port number (typically port 80)
-static const int prowlServerPort = 80;
+int prowlServerPort = 80;
 
 // set to Prowl API base url (typically /publicapi/add)
-static const char prowlApiBaseUrl[] = "/publicapi/add";
+char prowlApiBaseUrl[] = "/publicapi/add";
 
 #endif
 
@@ -143,7 +157,7 @@ static const char prowlApiBaseUrl[] = "/publicapi/add";
 #if defined(SMS_NOTIFICATIONS)
 
 // using http://en.wikipedia.org/wiki/List_of_SMS_gateways set to match your mobile carrier and phone number
-static const char smtpToForSms[] = "your-mobile-number@your-carrier-gateway.com";
+char smtpToForSms[] = "your-mobile-number@your-carrier-gateway.com";
 
 #endif
 
@@ -157,13 +171,13 @@ static const char smtpToForSms[] = "your-mobile-number@your-carrier-gateway.com"
 #if defined(SMTP_NOTIFICATIONS) || defined(SMS_NOTIFICATIONS)
 
 // set to your ISP's SMTP server name
-static const char smtpServerName[] = "smtp-server.your-isp.com";
+char smtpServerName[] = "smtp-server.your-isp.com";
 
 // set to your ISP's SMTP server port (typically port 25)
-static const int smtpServerPort = 25;
+int smtpServerPort = 25;
 
 // set to the email address you want notifications sent to
-static const char smtpToForEmail[] = "your.address@gmail.com";
+char smtpToForEmail[] = "your.address@gmail.com";
 
 #endif
 
@@ -171,17 +185,9 @@ static const char smtpToForEmail[] = "your.address@gmail.com";
 // Misc configuration constants (should not require any changes)
 //*******************************************************************
 
-// EthernetShield MAC address.
-
-static uint8_t mac[6] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-
-// Arduino HTTP server listening port number.
-
-WebServer webserver("", 80);
-
 // number of milliseconds relay pin will be held high when triggered.
 
-#define RELAY_DELAY 1000
+int RELAY_DELAY = 1000;
 
 // misc size constants
 
@@ -441,228 +447,6 @@ boolean isOpen(int pinNumber)
 
 //----------------------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------------------
-void output(WebServer &server, char* data, bool newLine)
-{
-  #if defined(MYDOOROPENER_SERIAL_DEBUGGING)
-    if (newLine)
-      Serial.println(data);
-    else
-      Serial.print(data);
-  #endif
-
-  if (newLine)
-    server.println(data);
-  else
-    server.print(data);
-}
-
-//----------------------------------------------------------------------------------------------------
-void output(WebServer &server, int number, bool newLine)
-{
-  char str[10] = "";
-  itoa(number, str, 10);
-
-  output(server, str, newLine);
-}
-
-//----------------------------------------------------------------------------------------------------
-void webRequestHandler(WebServer &server, WebServer::ConnectionType type, char *url, bool isUrlComplete)
-{
-  #if defined(MYDOOROPENER_SERIAL_DEBUGGING)
-    Serial.println(F("*** WebServerRequestHandler begin ***"));
-  #endif
-
-  // holder for submitted password (as hex)
-
-  char submitPassword[PASSWORD_HEX_SIZE + 1];
-  memset(&submitPassword, 0, sizeof(submitPassword));
-
-  // door on which open/close action is to be carried out. If unspecified, assume door #1
-
-  char relayPinAsString[10];
-  memset(&relayPinAsString, 0, sizeof(relayPinAsString));
-  int relayPin = -1;
-
-  // holder for current challenge token value. The following must not be
-  // initialized (memset) because it is static and must persist across HTTP calls
-
-  static char currentChallengeToken[CHALLENGE_TOKEN_SIZE + 1] = "";
-
-  // handle HTTP GET params (if provided)
-
-  char name[HTTP_PARAM_NAME_SIZE + 1];
-  char value[HTTP_PARAM_VALUE_SIZE + 1];
-
-  // process all HTTP GET parameters
-
-  if (type == WebServer::GET)
-  {
-    #if defined(MYDOOROPENER_SERIAL_DEBUGGING)
-      Serial.println(F("*** GET Request ***"));
-    #endif
-
-    while (url && strlen(url))
-    {
-      // process each HTTP GET parameter, one at a time
-
-      memset(&name, 0, sizeof(name));
-      memset(&value, 0, sizeof(value));
-
-      server.nextURLparam(&url, name, HTTP_PARAM_NAME_SIZE, value, HTTP_PARAM_VALUE_SIZE);
-
-      #if defined(MYDOOROPENER_SERIAL_DEBUGGING)
-        Serial.print(F("*** HTTP GET PARAM - name: '"));
-        Serial.print(name);
-        Serial.print(F("' - "));
-        Serial.print(F("value: '"));
-        Serial.print(value);
-        Serial.println(F("' ***"));
-      #endif
-
-      // keep hold of submitted encrypted hex password value
-
-      if (strcmp(name, "password") == 0)
-        strcpy(submitPassword, value);
-
-      // keep hold of relay pin which should be triggered
-
-      else if (strcmp(name, "relayPin") == 0)
-      {
-        strcpy(relayPinAsString, value);
-        relayPin = atoi(relayPinAsString);
-      }
-    }
-  }
-
-  // the presence of an HTTP GET password param results in a request
-  // to trigger the relay (used to be triggered by an HTTP request of type POST)
-
-  if(strlen(submitPassword) > 0)
-  {
-    #if defined(MYDOOROPENER_SERIAL_DEBUGGING)
-      Serial.print(F("*** submitPassword: '"));
-      Serial.print(submitPassword);
-      Serial.println(F("' ***"));
-    #endif
-
-    // decrypt password using latest challenge token as cypher key
-
-    uint8_t cryptoKey[AES256_CRYPTO_KEY_SIZE + 1];
-    memset(&cryptoKey, 0, sizeof(cryptoKey));
-
-    for (int i = 0; i < strlen(currentChallengeToken); ++i)
-      cryptoKey[i] = currentChallengeToken[i];
-
-    uint8_t password[PASSWORD_SIZE + 1];
-    memset(&password, 0, sizeof(password));
-
-    // convert password from hex string to ascii decimal
-
-    int i = 0;
-    int j = 0;
-    while (true)
-    {
-      if (!submitPassword[j])
-        break;
-
-      char hexValue[3] = { submitPassword[j], submitPassword[j+1], '\0' };
-      password[i] = (int) strtol(hexValue, NULL, 16);
-
-      i += 1;
-      j += 2;
-    }
-
-    // proceed with AES256 password decryption
-
-    aes256_context ctx;
-    aes256_init(&ctx, cryptoKey);
-    aes256_decrypt_ecb(&ctx, password);
-    aes256_done(&ctx);
-
-    char passwordAsChar[PASSWORD_SIZE + 1];
-    memset(&passwordAsChar, 0, sizeof(passwordAsChar));
-
-    for (int i = 0; i < sizeof(password); ++i)
-      passwordAsChar[i] = password[i];
-
-    #if defined(MYDOOROPENER_SERIAL_DEBUGGING)
-      Serial.print(F("*** passwordAsChar: '"));
-      Serial.print(passwordAsChar);
-      Serial.println(F("' ***"));
-    #endif
-
-    // if password matches, trigger relay
-
-    if (strcmp(passwordAsChar, PASSWORD) == 0)
-    {
-      #if defined(MYDOOROPENER_SERIAL_DEBUGGING)
-        Serial.println(F("*** password matched ***"));
-      #endif
-
-      // trigger relay pin and hold it HIGH for the appropriate number of milliseconds
-
-      if (relayPin != -1)
-      {
-        #if defined(MYDOOROPENER_SERIAL_DEBUGGING)
-          Serial.println(F("*** relay triggered ***"));
-        #endif
-
-        digitalWrite(relayPin, HIGH);
-        delay(RELAY_DELAY);
-        digitalWrite(relayPin, LOW);
-      }
-    }
-  }
-
-  // write HTTP headers
-
-  server.httpSuccess("text/xml; charset=utf-8");
-
-  #if defined(MYDOOROPENER_SERIAL_DEBUGGING)
-    Serial.println(F("*** XML output begin ***"));
-  #endif
-
-  // write opening XML element to output stream
-
-  output(server, "<?xml version=\"1.0\"?>", true);
-  output(server, "<myDoorOpener>", true);
-
-  // write current door status
-
-  for (int i = 0; i < sizeof(statusPins); ++i)
-  {
-    output(server, "<status statusPin=\"", false);
-    output(server, statusPins[i], false);
-    output(server, "\">", false);
-
-    // write current open/close state to output stream
-
-    output(server, (char*)(isOpen(statusPins[i]) ? "Opened" : "Closed"), false);
-    output(server, "</status>", true);
-  }
-
-  // re-generate new challenge token
-
-  sprintf(currentChallengeToken, "Cyber%i%i%i", hour(), minute(), second());
-
-  // write challenge token to output stream
-
-  output(server, "<challengeToken>", false);
-  output(server, currentChallengeToken, false);
-  output(server, "</challengeToken>", true);
-
-  // write closing XML element to output stream
-
-  output(server, "</myDoorOpener>", true);
-
-  #if defined(MYDOOROPENER_SERIAL_DEBUGGING)
-    Serial.println(F("*** XML output end ***"));
-    Serial.println(F("*** WebServerRequestHandler end ***"));
-  #endif
-}
-
-//----------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------
 #if defined(NOTIFICATIONS_WATCHDOG_MINUTES)
 
 //----------------------------------------------------------------------------------------------------
@@ -829,17 +613,9 @@ void setup()
     digitalWrite(relayPins[i], LOW);
   }
 
-  // set arbitrary time - used for always-changing challenge token generation
-
-  setTime(0, 0, 0, 1, 1, 2010);
-
   // start web server
 
-  Ethernet.begin(mac, ip);
-
-  webserver.setDefaultCommand(&webRequestHandler);
-  webserver.addCommand("", &webRequestHandler);
-  webserver.begin();
+  myDoorOpenerServer.setup();
 
   #if defined(MYDOOROPENER_SERIAL_DEBUGGING)
     Serial.println(F("*** MyDoorOpener setup completed ***"));
@@ -850,10 +626,7 @@ void setup()
 //----------------------------------------------------------------------------------------------------
 void loop()
 {
-  char buffer[200];
-  int len = sizeof(buffer);
-
-  webserver.processConnection(buffer, &len);
+  myDoorOpenerServer.loop();
 
   #if defined(NOTIFICATIONS_WATCHDOG_MINUTES)
     watchDogNotificationsHandler();
@@ -863,4 +636,3 @@ void loop()
     openNotificationsHandler();
   #endif
 }
-
